@@ -556,5 +556,5 @@ def update_div(clustering_type):
 
 if __name__ == "__main__":
     app.run_server(
-        debug=True, port=8051, dev_tools_hot_reload=False, use_reloader=False
+        app.run_server(debug=True, host='0.0.0.0')
     )
