@@ -8,6 +8,7 @@ import numpy as np
 import pathlib
 import geopandas as gpd
 import pysal as ps
+import psycopg2
 
 from sklearn import cluster
 from sklearn.preprocessing import scale
@@ -15,19 +16,27 @@ from sklearn.preprocessing import scale
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
 data_path = pathlib.Path(__file__).parent.joinpath("data")
-geo_json_path = data_path.joinpath("Zipcodes.geojson")
-austin_listings = pd.read_csv(
-    "https://raw.githubusercontent.com/plotly/datasets/master/dash-sample-apps/dash-spatial-clustering/data/listings.csv",
-    low_memory=False,
-)
+geo_json_path = data_path.joinpath("boston-zip-codes.geojson")
 
-# Refractor zipcode outlier, modify in place
-zip_outlier = austin_listings[austin_listings["zipcode"] == "TX 78702"].index
-austin_listings.loc[zip_outlier, "zipcode"] = "78702"
-austin_listings = austin_listings.dropna(axis=0, subset=["zipcode"])
+# PostgreSQL connection parameters
+db_params = {
+    "host": os.environ["POSTGRESQL_HOST"],
+    "port": os.environ["POSTGRESQL_PORT"],
+    "database": os.environ["POSTGRESQL_DATABASE_NAME"],
+    "user": os.environ["POSTGRESQL_LOGIN"],
+    "password": os.environ["POSTGRESQL_PASSWORD"],
+}
+
+# Establish a connection to the PostgreSQL database
+conn = psycopg2.connect(**db_params)
+
+# Use a SQL query to fetch data directly from the database
+schema = "BnB"  # Your schema name
+query = f"SELECT * FROM {schema}.listing_data;"  
+boston_listings = pd.read_sql(query, conn)
 
 
-review_columns = [c for c in austin_listings.columns if "review_" in c]
+review_columns = [c for c in boston_listings.columns if "review_" in c]
 
 # Geojson loading
 with open(geo_json_path) as response:
@@ -36,8 +45,9 @@ with open(geo_json_path) as response:
     for feature in zc_link["features"]:
         feature["id"] = feature["properties"]["zipcode"]
 
-listing_zipcode = austin_listings["zipcode"].unique()
+listing_zipcode = boston_listings["zipcode"].unique()
 
+conn.close()
 
 def apply_clustering():
     """
@@ -48,11 +58,11 @@ def apply_clustering():
     barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
     """
     variables = ["bedrooms", "bathrooms", "beds"]
-    aves = austin_listings.groupby("zipcode")[variables].mean()
-    review_aves = austin_listings.groupby("zipcode")[review_columns].mean()
+    aves = boston_listings.groupby("zipcode")[variables].mean()
+    review_aves = boston_listings.groupby("zipcode")[review_columns].mean()
 
-    types = pd.get_dummies(austin_listings["property_type"])
-    prop_types = types.join(austin_listings["zipcode"]).groupby("zipcode").sum()
+    types = pd.get_dummies(boston_listings["property_type"])
+    prop_types = types.join(boston_listings["zipcode"]).groupby("zipcode").sum()
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
 
     aves_props = aves.join(prop_types_pct)
@@ -91,7 +101,7 @@ def rating_clustering(threshold):
     # apply a minimum threshold (5% per region) on it.
 
     # Bring review columns at zipcode level
-    rt_av = austin_listings.groupby("zipcode")[review_columns].mean().dropna()
+    rt_av = boston_listings.groupby("zipcode")[review_columns].mean().dropna()
 
     # Regionalization requires building of spatial weights
     zc = gpd.read_file(geo_json_path)
@@ -106,7 +116,7 @@ def rating_clustering(threshold):
 
     # Impose that every resulting region has at least 5% of the total number of reviews
     n_review = (
-        austin_listings.groupby("zipcode")
+        boston_listings.groupby("zipcode")
         .sum()["number_of_reviews"]
         .rename(lambda x: str(int(x)))
         .reindex(zrt["zipcode"])
@@ -136,8 +146,8 @@ def rating_clustering(threshold):
         end - start,
     )
 
-    types = pd.get_dummies(austin_listings["property_type"])
-    prop_types = types.join(austin_listings["zipcode"]).groupby("zipcode").sum()
+    types = pd.get_dummies(boston_listings["property_type"])
+    prop_types = types.join(boston_listings["zipcode"]).groupby("zipcode").sum()
     merged = pd.merge(
         prop_types.reset_index(), regionalization_df, on="zipcode", how="inner"
     )
@@ -153,6 +163,7 @@ def rating_clustering(threshold):
     zrt = zrt[review_columns].groupby(lbls.values).mean()
     joined_prop = pct_d.join(zrt)
     return regionalization_df, p_value, joined_prop
+
 
 
 # #

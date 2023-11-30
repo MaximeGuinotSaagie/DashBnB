@@ -9,7 +9,7 @@ import plotly.express as px
 import pandas as pd
 
 from helpers import (
-    austin_listings,
+    boston_listings,
     zc_link,
     apply_clustering,
     rating_clustering,
@@ -22,7 +22,7 @@ server = app.server
 app.config.suppress_callback_exceptions = True
 
 # CONSTANTS
-grouped = austin_listings.groupby("zipcode").size()
+grouped = boston_listings.groupby("zipcode").size()
 
 mapbox_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A"
 
@@ -90,19 +90,19 @@ def make_base_map():
     # Scattermapbox with geojson layer, plot all listings on mapbox
     customdata = list(
         zip(
-            austin_listings["host_name"],
-            austin_listings["name"],
-            austin_listings["host_since"],
-            austin_listings["price"],
-            austin_listings["accommodates"],
-            austin_listings["availability_365"],
-            round(austin_listings["availability_365"] / 365 * 100, 1),
+            boston_listings["host_name"],
+            boston_listings["name"],
+            boston_listings["host_since"],
+            boston_listings["price"],
+            boston_listings["accommodates"],
+            boston_listings["availability_365"],
+            round(boston_listings["availability_365"] / 365 * 100, 1),
         )
     )
     mapbox_figure = dict(
         type="scattermapbox",
-        lat=austin_listings["latitude"],
-        lon=austin_listings["longitude"],
+        lat=boston_listings["latitude"],
+        lon=boston_listings["longitude"],
         marker=dict(size=7, opacity=0.7, color="#550100"),
         customdata=customdata,
         name="Listings",
@@ -121,8 +121,8 @@ def make_base_map():
             accesstoken=mapbox_token,
             zoom=9,
             center=dict(
-                lon=austin_listings["longitude"].mean(),
-                lat=austin_listings["latitude"].mean(),
+                lon=boston_listings["longitude"].mean(),
+                lat=boston_listings["latitude"].mean(),
             ),
         ),
         shapes=[
@@ -200,8 +200,8 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
 
 def make_original_property_graph():
     # Property type without any grouping
-    types = pd.get_dummies(austin_listings["property_type"])
-    prop_types = types.join(austin_listings["zipcode"]).groupby("zipcode").sum()
+    types = pd.get_dummies(boston_listings["property_type"])
+    prop_types = types.join(boston_listings["zipcode"]).groupby("zipcode").sum()
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
 
     # Plot horizontal bars
@@ -479,7 +479,7 @@ def update_indicator(map_select, n_click, cluster_type, ds):
         elif cluster_type == "rating-cluster":
             dff = rt
         if map_select is None:
-            return str(len(austin_listings)), {"color": "#550100"}
+            return str(len(boston_listings)), {"color": "#550100"}
 
         else:
             for point in map_select["points"]:
@@ -492,7 +492,7 @@ def update_indicator(map_select, n_click, cluster_type, ds):
                         count += grouped[str(zip)]
                     return str(count), {"color": geo_colors[sel_ind]}
 
-    return str(len(austin_listings)), {"color": "#550100"}
+    return str(len(boston_listings)), {"color": "#550100"}
 
 
 @app.callback(
@@ -540,7 +540,7 @@ def update_review_chart(ds, clustering_type):
         return make_review_chart(ht)
     elif clustering_type == "no-cluster":
         # Avg review scores for all data
-        dff = austin_listings[review_columns].mean(axis=0, skipna=True)
+        dff = boston_listings[review_columns].mean(axis=0, skipna=True)
         dff_t = pd.DataFrame(dff).transpose()
         dff_t[review_columns[1:]] = dff_t[review_columns[1:]] * 10
         return make_review_chart(dff_t, original=True)
