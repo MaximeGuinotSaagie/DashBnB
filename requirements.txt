@@ -6,6 +6,6 @@ scikit-learn==0.22.1
 pysal==1.11.1
 scipy==0.19.0
 geopandas==0.6.2
-plotly==4.5.0
+plotly==5.18.0
 mkl
 pathlib
