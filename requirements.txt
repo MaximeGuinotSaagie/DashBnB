@@ -1,11 +1,11 @@
 dash==2.7.0
-gunicorn==19.9.0
+gunicorn
 numpy
 pandas
-scikit-learn==0.22.1
-pysal==1.11.1
-scipy==0.19.0
-geopandas==0.6.2
+scikit-learn
+pysal
+scipy
+geopandas
 plotly==5.18.0
 mkl
 pathlib
