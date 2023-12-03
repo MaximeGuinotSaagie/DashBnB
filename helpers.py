@@ -31,8 +31,8 @@ db_params = {
 conn = psycopg2.connect(**db_params)
 
 # Use a SQL query to fetch data directly from the database
-schema = "BnB"  # Your schema name
-query = f"SELECT * FROM {schema}.listing_data;"  
+schema = "BnB"
+query = f'SELECT * FROM "{schema}".listing_data;'
 boston_listings = pd.read_sql(query, conn)
 
 
