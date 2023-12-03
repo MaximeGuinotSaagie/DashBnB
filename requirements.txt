@@ -1,4 +1,4 @@
-dash==2.7.0
+dash
 gunicorn
 numpy
 pandas
@@ -6,7 +6,7 @@ scikit-learn
 pysal
 scipy
 geopandas
-plotly==5.18.0
-mkl
+plotly
+#mkl
 pathlib
-cmake
+#cmake
