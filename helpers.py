@@ -43,7 +43,7 @@ with open(geo_json_path) as response:
     zc_link = json.load(response)
     # Add id for choropleth layer
     for feature in zc_link["features"]:
-        feature["id"] = feature["properties"]["ZIP5"]
+        feature["id"] = feature["properties"]["zipcode"]
 
 listing_zipcode = boston_listings["zipcode"].unique()
 
