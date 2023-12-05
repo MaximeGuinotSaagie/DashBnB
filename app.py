@@ -22,7 +22,7 @@ server = app.server
 app.config.suppress_callback_exceptions = True
 
 # CONSTANTS
-grouped = boston_listings.groupby("zipcode").size()
+grouped = boston_listings.groupby("neighbourhood_cleansed").size()
 
 mapbox_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A"
 
