@@ -45,7 +45,7 @@ with open(geo_json_path) as response:
     for feature in zc_link["features"]:
         feature["id"] = feature["properties"]["ZIP5"]
 
-listing_zipcode = boston_listings["zipcode"].unique()
+listing_zipcode = boston_listings["neighbourhood_cleansed"].unique()
 
 conn.close()
 
