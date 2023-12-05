@@ -58,11 +58,11 @@ def apply_clustering():
     barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
     """
     variables = ["bedrooms", "bathrooms", "beds"]
-    aves = boston_listings.groupby("zipcode")[variables].mean()
-    review_aves = boston_listings.groupby("zipcode")[review_columns].mean()
+    aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean()
+    review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
 
     types = pd.get_dummies(boston_listings["property_type"])
-    prop_types = types.join(boston_listings["zipcode"]).groupby("zipcode").sum()
+    prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
 
     aves_props = aves.join(prop_types_pct)
@@ -101,13 +101,13 @@ def rating_clustering(threshold):
     # apply a minimum threshold (5% per region) on it.
 
     # Bring review columns at zipcode level
-    rt_av = boston_listings.groupby("zipcode")[review_columns].mean().dropna()
+    rt_av = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean().dropna()
 
     # Regionalization requires building of spatial weights
     zc = gpd.read_file(geo_json_path)
-    zrt = zc[["geometry", "zipcode"]].join(rt_av, on="zipcode").dropna()
+    zrt = zc[["geometry", "neighbourhood_cleansed"]].join(rt_av, on="neighbourhood_cleansed").dropna()
     zrt.to_file("tmp")
-    w = ps.queen_from_shapefile("tmp/tmp.shp", idVariable="zipcode")
+    w = ps.queen_from_shapefile("tmp/tmp.shp", idVariable="neighbourhood_cleansed")
 
     # Remove temp tmp/* we created for spatial weights
     if os.path.isdir(os.path.join(app_path, "tmp")):
@@ -116,26 +116,26 @@ def rating_clustering(threshold):
 
     # Impose that every resulting region has at least 5% of the total number of reviews
     n_review = (
-        boston_listings.groupby("zipcode")
+        boston_listings.groupby("neighbourhood_cleansed")
         .sum()["number_of_reviews"]
         .rename(lambda x: str(int(x)))
-        .reindex(zrt["zipcode"])
+        .reindex(zrt["neighbourhood_cleansed"])
     )
     thr = np.round(int(threshold) / 100 * n_review.sum())
 
     # Set the seed for reproducibility
     np.random.seed(1234)
 
-    z = zrt.drop(["geometry", "zipcode"], axis=1).values
+    z = zrt.drop(["geometry", "neighbourhood_cleansed"], axis=1).values
     # Create max-p algorithm, note that this API is upgraded in pysal>1.11.1
     maxp = ps.region.Maxp(w, z, thr, n_review.values[:, None], initial=100)
     maxp.cinference(nperm=99)
     # p value compared with randomly assigned region
     p_value = maxp.cpvalue
     print("p_value:", p_value)
-    lbls = pd.Series(maxp.area2region).reindex(zrt["zipcode"])
+    lbls = pd.Series(maxp.area2region).reindex(zrt["neighbourhood_cleansed"])
     regionalization_df = (
-        pd.DataFrame(lbls).reset_index().rename(columns={"zipcode": "zipcode", 0: "cl"})
+        pd.DataFrame(lbls).reset_index().rename(columns={"neighbourhood_cleansed": "neighbourhood_cleansed", 0: "cl"})
     )
 
     end = time.time()
@@ -147,15 +147,15 @@ def rating_clustering(threshold):
     )
 
     types = pd.get_dummies(boston_listings["property_type"])
-    prop_types = types.join(boston_listings["zipcode"]).groupby("zipcode").sum()
+    prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
     merged = pd.merge(
-        prop_types.reset_index(), regionalization_df, on="zipcode", how="inner"
+        prop_types.reset_index(), regionalization_df, on="neighbourhood_cleansed", how="inner"
     )
-    d_merged = merged.drop(["zipcode", "cl"], axis=1)
+    d_merged = merged.drop(["neighbourhood_cleansed", "cl"], axis=1)
     prop_types_pct = (d_merged * 100.0).div(d_merged.sum(axis=1), axis=0)
 
     pct_d = (
-        prop_types_pct.assign(cl=merged["cl"], zipcode=merged["zipcode"])
+        prop_types_pct.assign(cl=merged["cl"], zipcode=merged["neighbourhood_cleansed"])
         .groupby("cl")
         .mean()
     )
