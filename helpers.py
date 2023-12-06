@@ -81,13 +81,11 @@ def apply_clustering():
     print(db)
 
 
-    # Initialize db_encoded as a copy of db
-    db_encoded = db.copy()
-
     le = preprocessing.LabelEncoder()
     for i in range(40):
-        # Use iloc to select the column by index
-        db_encoded.iloc[:, i] = le.fit_transform(db.iloc[:, i])
+        db_encoded[db_encoded.columns[i]] = le.fit_transform(db.iloc[:, i])
+    
+    db_encoded = pd.get_dummies(db, columns=db.columns)
 
     print("db_encoded:")
     print(db_encoded)
