@@ -8,12 +8,17 @@ import pathlib
 import geopandas as gpd
 import pysal as ps
 import psycopg2
+
 from sklearn import cluster
 from sklearn.preprocessing import scale
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
 data_path = pathlib.Path(__file__).parent.joinpath("data")
 geo_json_path = data_path.joinpath("boston-zip-codes.geojson")
+
 # PostgreSQL connection parameters
 db_params = {
     "host": os.environ["POSTGRESQL_HOST"],
@@ -22,6 +27,7 @@ db_params = {
     "user": os.environ["POSTGRESQL_LOGIN"],
     "password": os.environ["POSTGRESQL_PASSWORD"],
 }
+
 # Establish a connection to the PostgreSQL database
 conn = psycopg2.connect(**db_params)
 # Use a SQL query to fetch data directly from the database
@@ -29,6 +35,7 @@ schema = "BnB"
 query = f'SELECT * FROM "{schema}".listing_data;'
 boston_listings = pd.read_sql(query, conn)
 review_columns = [c for c in boston_listings.columns if "review_" in c]
+
 # Geojson loading
 with open(geo_json_path) as response:
     zc_link = json.load(response)
@@ -37,6 +44,7 @@ with open(geo_json_path) as response:
         feature["id"] = feature["properties"]["ZIP5"]
 listing_zipcode = boston_listings["neighbourhood_cleansed"].unique()
 conn.close()
+
 def apply_clustering():
     """
      # Apply KMeans clustering to group zipcodes into categories based on type of houses listed(i.e. property type)
@@ -50,39 +58,48 @@ def apply_clustering():
     types = pd.get_dummies(boston_listings["property_type"])
     print("types:")
     print(types)
+
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
     print("prop_types:")
     print(prop_types)
+
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
     print("prop_types_pct:")
     print(prop_types_pct)
+
     aves_props = aves.join(prop_types_pct)
     print("aves_props:")
     print(aves_props)
+
     # Standardize a dataset along any axis, Center to the mean and component wise scale to unit variance.
     db = pd.DataFrame(
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
+
     print("db:")
     print(db)
 
+    db_encoded = pd.get_dummies(db, columns=['neighbourhood_cleansed'])
+    print("db_encoded:")
+    print(db_encoded)
     # Apply clustering on scaled df
-    numeric_db = db.select_dtypes(include=[np.number])
-    print("numeric_db:")
-    print(numeric_db.dtypes)
     km5 = cluster.KMeans(n_clusters=5)
-    km5cls = km5.fit(numeric_db.reset_index().values)
+    km5cls = km5.fit(db_encoded.reset_index().values)
     # print(len(km5cls.labels_))
     db["cl"] = km5cls.labels_
     # sort by labels since every time cluster is running, label 0-4 is randomly assigned
     db["count"] = db.groupby("cl")["cl"].transform("count")
+
     db.sort_values("count", inplace=True, ascending=True)
     barh_df = prop_types_pct.assign(cl=km5cls.labels_).groupby("cl").mean()
+    
     # Join avg review columns for updating review plot
     db = db.join(review_aves)
     grouped = db.groupby("cl")[review_columns].mean()
     barh_df = barh_df.join(grouped)
     return db.reset_index(), barh_df
+
+
 def rating_clustering(threshold):
     start = time.time()
     # Explore boundaries/ areas where customers are have similar ratings. Different from
