@@ -72,12 +72,19 @@ def apply_clustering():
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
 
+    numeric_columns = db.select_dtypes(include=np.number).columns
+    db_numeric = db[numeric_columns]
+
+    # Apply clustering on scaled df
+    km5 = cluster.KMeans(n_clusters=5)
+    km5cls = km5.fit(db_numeric.reset_index().values)
+
     # Apply clustering on scaled df
     # numeric_db = db.select_dtypes(include=[np.number])
     # One-hot encode a nominal column
-    db_encoded = pd.get_dummies(db, columns=['neighbourhood_cleansed'], numeric_only=True)
-    km5 = cluster.KMeans(n_clusters=5)
-    km5cls = km5.fit(db_encoded.reset_index().values)
+    # db_encoded = pd.get_dummies(db, columns=['neighbourhood_cleansed'], numeric_only=True)
+    # km5 = cluster.KMeans(n_clusters=5)
+    # km5cls = km5.fit(db_encoded.reset_index().values)
     # print(len(km5cls.labels_))
 
     db["cl"] = km5cls.labels_
