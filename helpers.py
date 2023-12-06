@@ -52,11 +52,11 @@ conn.close()
 
 def apply_clustering():
     """
-    Apply KMeans clustering to group zipcodes into categories based on type of houses listed (i.e., property type).
+    Apply KMeans clustering to group zipcodes into categories based on the type of houses listed (i.e., property type).
 
     :return: Dataframe.
-    db: scaled proportions of house types by zipcode, use for plotting Choropleth map layer.
-    barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
+    db: scaled proportions of house types by zipcode, used for plotting Choropleth map layer.
+    barh_df : scaled proportion of house type grouped by cluster, used for prop type chart and review chart.
     """
     variables = ["bedrooms", "bathrooms", "beds"]
     aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean()
@@ -68,7 +68,7 @@ def apply_clustering():
 
     aves_props = aves.join(prop_types_pct)
 
-    # Standardize a dataset along any axis, Center to the mean and component-wise scale to unit variance.
+    # Standardize a dataset along any axis, center to the mean, and component-wise scale to unit variance.
     db = pd.DataFrame(
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
@@ -77,7 +77,7 @@ def apply_clustering():
     numeric_columns = db.select_dtypes(include=np.number).columns
     db_numeric = db[numeric_columns]
 
-    # Apply clustering on scaled df
+    # Apply clustering on the numeric df
     km5 = cluster.KMeans(n_clusters=5)
     km5cls = km5.fit(db_numeric.reset_index().values)
 
