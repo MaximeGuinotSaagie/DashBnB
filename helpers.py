@@ -80,10 +80,12 @@ def apply_clustering():
     print("db:")
     print(db)
 
+    db_encoded = pd.DataFrame()
 
     le = preprocessing.LabelEncoder()
     for i in range(40):
-        db_encoded[db_encoded.columns[i]] = le.fit_transform(db.iloc[:, i])
+        column_name = db.columns[i]
+        db_encoded[column_name] = le.fit_transform(db[column_name])
     
     db_encoded = pd.get_dummies(db, columns=db.columns)
 
