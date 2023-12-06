@@ -13,6 +13,7 @@ from sklearn import cluster
 from sklearn.preprocessing import scale
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn import preprocessing
 
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
@@ -79,9 +80,14 @@ def apply_clustering():
     print("db:")
     print(db)
 
-    db_encoded = pd.get_dummies(db, columns=['neighbourhood_cleansed'])
+
+    le = preprocessing.LabelEncoder()
+    for i in range(40):
+        db_encoded[:,i] = le.fit_transform(db[:,i])
+
     print("db_encoded:")
     print(db_encoded)
+
     # Apply clustering on scaled df
     km5 = cluster.KMeans(n_clusters=5)
     km5cls = km5.fit(db_encoded.reset_index().values)
