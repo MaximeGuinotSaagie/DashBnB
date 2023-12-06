@@ -2,25 +2,18 @@ import json
 import os
 import shutil
 import time
-
 import pandas as pd
 import numpy as np
 import pathlib
 import geopandas as gpd
 import pysal as ps
 import psycopg2
-
 from sklearn import cluster
 from sklearn.preprocessing import scale
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.impute import SimpleImputer
-
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
 data_path = pathlib.Path(__file__).parent.joinpath("data")
 geo_json_path = data_path.joinpath("boston-zip-codes.geojson")
-
 # PostgreSQL connection parameters
 db_params = {
     "host": os.environ["POSTGRESQL_HOST"],
@@ -29,112 +22,83 @@ db_params = {
     "user": os.environ["POSTGRESQL_LOGIN"],
     "password": os.environ["POSTGRESQL_PASSWORD"],
 }
-
 # Establish a connection to the PostgreSQL database
 conn = psycopg2.connect(**db_params)
-
 # Use a SQL query to fetch data directly from the database
 schema = "BnB"
 query = f'SELECT * FROM "{schema}".listing_data;'
 boston_listings = pd.read_sql(query, conn)
-
-
 review_columns = [c for c in boston_listings.columns if "review_" in c]
-
 # Geojson loading
 with open(geo_json_path) as response:
     zc_link = json.load(response)
     # Add id for choropleth layer
     for feature in zc_link["features"]:
         feature["id"] = feature["properties"]["ZIP5"]
-
 listing_zipcode = boston_listings["neighbourhood_cleansed"].unique()
-
 conn.close()
-
 def apply_clustering():
     """
-    Apply KMeans clustering to group zipcodes into categories based on the type of houses listed (i.e., property type).
-
+     # Apply KMeans clustering to group zipcodes into categories based on type of houses listed(i.e. property type)
     :return: Dataframe.
-    db: scaled proportions of house types by zipcode, used for plotting Choropleth map layer.
-    barh_df : scaled proportion of house type grouped by cluster, used for prop type chart and review chart.
+    db: scaled proportions of house types by zipcode, use for plotting Choropleth map layer.
+    barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
     """
     variables = ["bedrooms", "bathrooms", "beds"]
     aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean()
     review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
-
     types = pd.get_dummies(boston_listings["property_type"])
+    print("types:")
+    print(types)
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
+    print("prop_types:")
+    print(prop_types)
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
-
+    print("prop_types_pct:")
+    print(prop_types_pct)
     aves_props = aves.join(prop_types_pct)
-
-    # Standardize a dataset along any axis, center to the mean, and component-wise scale to unit variance.
+    print("aves_props:")
+    print(aves_props)
+    # Standardize a dataset along any axis, Center to the mean and component wise scale to unit variance.
     db = pd.DataFrame(
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
+    print("db:")
+    print(db)
 
-    # One-hot encode categorical columns
-    encoder = OneHotEncoder(sparse=False, drop='first')
-    neighbourhood_encoded = encoder.fit_transform(boston_listings[["neighbourhood_cleansed"]])
-    neighbourhood_columns = encoder.get_feature_names_out(["neighbourhood_cleansed"])
-    neighbourhood_df = pd.DataFrame(neighbourhood_encoded, columns=neighbourhood_columns, index=boston_listings.index)
-    
-    db = pd.concat([db, neighbourhood_df], axis=1)
-
-    # Impute missing values
-    imputer = SimpleImputer(strategy='mean')
-    db_imputed = pd.DataFrame(imputer.fit_transform(db), columns=db.columns, index=db.index)
-
-    # Select numeric columns
-    numeric_columns = db_imputed.select_dtypes(include=np.number).columns
-    db_numeric = db_imputed[numeric_columns]
-
-    # Apply clustering on the numeric df
+    # Apply clustering on scaled df
+    numeric_db = db.select_dtypes(include=[np.number])
+    print("numeric_db:")
+    print(numeric_db.dtypes)
     km5 = cluster.KMeans(n_clusters=5)
-    km5cls = km5.fit(db_numeric.values)
-
-    db_imputed["cl"] = km5cls.labels_
-
+    km5cls = km5.fit(numeric_db.reset_index().values)
+    # print(len(km5cls.labels_))
+    db["cl"] = km5cls.labels_
     # sort by labels since every time cluster is running, label 0-4 is randomly assigned
-    db_imputed["count"] = db_imputed.groupby("cl")["cl"].transform("count")
-
-    db_imputed.sort_values("count", inplace=True, ascending=True)
-
-    prop_types_pct.reset_index(drop=True, inplace=True)
-    print("Length of km5cls.labels_:", len(km5cls.labels_))
-    print("Length of prop_types_pct index:", len(prop_types_pct))
-    prop_types_pct['cl'] = km5cls.labels_
-    barh_df = prop_types_pct.groupby("cl").mean()
-
+    db["count"] = db.groupby("cl")["cl"].transform("count")
+    db.sort_values("count", inplace=True, ascending=True)
+    barh_df = prop_types_pct.assign(cl=km5cls.labels_).groupby("cl").mean()
     # Join avg review columns for updating review plot
-    db_imputed = db_imputed.join(review_aves)
-    grouped = db_imputed.groupby("cl")[review_columns].mean()
+    db = db.join(review_aves)
+    grouped = db.groupby("cl")[review_columns].mean()
     barh_df = barh_df.join(grouped)
-
-    return db_imputed.reset_index(), barh_df
-
+    return db.reset_index(), barh_df
 def rating_clustering(threshold):
     start = time.time()
     # Explore boundaries/ areas where customers are have similar ratings. Different from
     # predefined number of output regions, it takes target variable(num of reviews, and
     # apply a minimum threshold (5% per region) on it.
-
     # Bring review columns at zipcode level
     rt_av = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean().dropna()
-
     # Regionalization requires building of spatial weights
     zc = gpd.read_file(geo_json_path)
     zrt = zc[["geometry", "neighbourhood_cleansed"]].join(rt_av, on="neighbourhood_cleansed").dropna()
     zrt.to_file("tmp")
     w = ps.queen_from_shapefile("tmp/tmp.shp", idVariable="neighbourhood_cleansed")
-
     # Remove temp tmp/* we created for spatial weights
     if os.path.isdir(os.path.join(app_path, "tmp")):
         print("removing tmp folder")
         shutil.rmtree(os.path.join(app_path, "tmp"))
-
     # Impose that every resulting region has at least 5% of the total number of reviews
     n_review = (
         boston_listings.groupby("neighbourhood_cleansed")
@@ -143,10 +107,8 @@ def rating_clustering(threshold):
         .reindex(zrt["neighbourhood_cleansed"])
     )
     thr = np.round(int(threshold) / 100 * n_review.sum())
-
     # Set the seed for reproducibility
     np.random.seed(1234)
-
     z = zrt.drop(["geometry", "neighbourhood_cleansed"], axis=1).values
     # Create max-p algorithm, note that this API is upgraded in pysal>1.11.1
     maxp = ps.region.Maxp(w, z, thr, n_review.values[:, None], initial=100)
@@ -158,7 +120,6 @@ def rating_clustering(threshold):
     regionalization_df = (
         pd.DataFrame(lbls).reset_index().rename(columns={"neighbourhood_cleansed": "neighbourhood_cleansed", 0: "cl"})
     )
-
     end = time.time()
     # The larger threshold, the longer time it takes for computing
     print(
@@ -166,7 +127,6 @@ def rating_clustering(threshold):
         "time cost for clustering: ",
         end - start,
     )
-
     types = pd.get_dummies(boston_listings["property_type"])
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
     merged = pd.merge(
@@ -174,18 +134,13 @@ def rating_clustering(threshold):
     )
     d_merged = merged.drop(["neighbourhood_cleansed", "cl"], axis=1)
     prop_types_pct = (d_merged * 100.0).div(d_merged.sum(axis=1), axis=0)
-
     pct_d = (
         prop_types_pct.assign(cl=merged["cl"], zipcode=merged["neighbourhood_cleansed"])
         .groupby("cl")
         .mean()
     )
-
     zrt = zrt[review_columns].groupby(lbls.values).mean()
     joined_prop = pct_d.join(zrt)
     return regionalization_df, p_value, joined_prop
-
-
-
 # #
 # rating = rating_clustering(5)
