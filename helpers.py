@@ -68,8 +68,11 @@ def apply_clustering():
     print("prop_types:")
     print(prop_types)
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
-
+    print("prop_types_pct:")
+    print(prop_types_pct)
     aves_props = aves.join(prop_types_pct)
+    print("aves_props:")
+    print(aves_props)
 
     # Standardize a dataset along any axis, Center to the mean and component wise scale to unit variance.
     db = pd.DataFrame(
