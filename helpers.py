@@ -81,9 +81,13 @@ def apply_clustering():
     print(db)
 
 
+    # Initialize db_encoded as a copy of db
+    db_encoded = db.copy()
+
     le = preprocessing.LabelEncoder()
     for i in range(40):
-        db_encoded[:,i] = le.fit_transform(db[:,i])
+        # Use iloc to select the column by index
+        db_encoded.iloc[:, i] = le.fit_transform(db.iloc[:, i])
 
     print("db_encoded:")
     print(db_encoded)
