@@ -62,37 +62,21 @@ def apply_clustering():
     review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
 
     types = pd.get_dummies(boston_listings["property_type"])
-    print("types:")
-    print(types)
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
-    print("prop_types:")
-    print(prop_types)
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
-    print("prop_types_pct:")
-    print(prop_types_pct)
     aves_props = aves.join(prop_types_pct)
-    print("aves_props:")
-    print(aves_props)
 
     # Standardize a dataset along any axis, Center to the mean and component wise scale to unit variance.
     db = pd.DataFrame(
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
 
-    print("db:")
-    print(db)
-
     # Apply clustering on scaled df
-    numeric_db = db.select_dtypes(include=[np.number])
-    print("numeric_db.isna().sum():")
-    print(numeric_db.isna().sum())
-    print("np.isinf(numeric_db).sum()")
-    print(np.isinf(numeric_db).sum())
-    print("numeric_db.nunique:")
-    print(numeric_db.nunique())
-
+    # numeric_db = db.select_dtypes(include=[np.number])
+    # One-hot encode a nominal column
+    db_encoded = pd.get_dummies(db, columns=['neighbourhood_cleansed'])
     km5 = cluster.KMeans(n_clusters=5)
-    km5cls = km5.fit(numeric_db.reset_index().values)
+    km5cls = km5.fit(db_encoded.reset_index().values)
     # print(len(km5cls.labels_))
 
     db["cl"] = km5cls.labels_
