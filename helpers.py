@@ -102,9 +102,10 @@ def apply_clustering():
 
     db_imputed.sort_values("count", inplace=True, ascending=True)
 
+    print("Length of km5cls.labels_:", len(km5cls.labels_))
+    print("Length of prop_types_pct index:", len(prop_types_pct))
     prop_types_pct['cl'] = km5cls.labels_
     barh_df = prop_types_pct.groupby("cl").mean()
-
 
     # Join avg review columns for updating review plot
     db_imputed = db_imputed.join(review_aves)
