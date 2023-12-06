@@ -88,7 +88,7 @@ def apply_clustering():
 
     # Apply clustering on the numeric df
     km5 = cluster.KMeans(n_clusters=5)
-    km5cls = km5.fit(db_numeric.reset_index().values)
+    km5cls = km5.fit(db_numeric.values)
 
     db["cl"] = km5cls.labels_
 
