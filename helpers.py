@@ -62,7 +62,11 @@ def apply_clustering():
     review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
 
     types = pd.get_dummies(boston_listings["property_type"])
+    print("types:")
+    print(types)
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
+    print("prop_types:")
+    print(prop_types)
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
 
     aves_props = aves.join(prop_types_pct)
