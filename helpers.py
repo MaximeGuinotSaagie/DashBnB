@@ -13,6 +13,7 @@ import psycopg2
 from sklearn import cluster
 from sklearn.preprocessing import scale
 from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
@@ -72,6 +73,14 @@ def apply_clustering():
     db = pd.DataFrame(
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
+
+    # One-hot encode categorical columns
+    encoder = OneHotEncoder(sparse=False, drop='first')
+    neighbourhood_encoded = encoder.fit_transform(boston_listings[["neighbourhood_cleansed"]])
+    neighbourhood_columns = encoder.get_feature_names_out(["neighbourhood_cleansed"])
+    neighbourhood_df = pd.DataFrame(neighbourhood_encoded, columns=neighbourhood_columns, index=boston_listings.index)
+    
+    db = pd.concat([db, neighbourhood_df], axis=1)
 
     # Select numeric columns
     numeric_columns = db.select_dtypes(include=np.number).columns
