@@ -12,6 +12,7 @@ import psycopg2
 
 from sklearn import cluster
 from sklearn.preprocessing import scale
+from sklearn.preprocessing import LabelEncoder
 
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
