@@ -73,7 +73,8 @@ def apply_clustering():
     ).rename(lambda x: str(x))
 
     numeric_columns = db.select_dtypes(include=np.number).columns
-    db_numeric = db[numeric_columns]
+    #db_numeric = db[numeric_columns]
+    db_numeric = pd.get_dummies(db_numeric)
 
     # Apply clustering on scaled df
     km5 = cluster.KMeans(n_clusters=5)
