@@ -14,6 +14,7 @@ from sklearn import cluster
 from sklearn.preprocessing import scale
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.impute import SimpleImputer
 
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
@@ -82,30 +83,33 @@ def apply_clustering():
     
     db = pd.concat([db, neighbourhood_df], axis=1)
 
+    # Impute missing values
+    imputer = SimpleImputer(strategy='mean')
+    db_imputed = pd.DataFrame(imputer.fit_transform(db), columns=db.columns, index=db.index)
+
     # Select numeric columns
-    numeric_columns = db.select_dtypes(include=np.number).columns
-    db_numeric = db[numeric_columns]
+    numeric_columns = db_imputed.select_dtypes(include=np.number).columns
+    db_numeric = db_imputed[numeric_columns]
 
     # Apply clustering on the numeric df
     km5 = cluster.KMeans(n_clusters=5)
     km5cls = km5.fit(db_numeric.values)
 
-    db["cl"] = km5cls.labels_
+    db_imputed["cl"] = km5cls.labels_
 
     # sort by labels since every time cluster is running, label 0-4 is randomly assigned
-    db["count"] = db.groupby("cl")["cl"].transform("count")
+    db_imputed["count"] = db_imputed.groupby("cl")["cl"].transform("count")
 
-    db.sort_values("count", inplace=True, ascending=True)
+    db_imputed.sort_values("count", inplace=True, ascending=True)
 
     barh_df = prop_types_pct.assign(cl=km5cls.labels_).groupby("cl").mean()
 
     # Join avg review columns for updating review plot
-    db = db.join(review_aves)
-    grouped = db.groupby("cl")[review_columns].mean()
+    db_imputed = db_imputed.join(review_aves)
+    grouped = db_imputed.groupby("cl")[review_columns].mean()
     barh_df = barh_df.join(grouped)
 
-    return db.reset_index(), barh_df
-
+    return db_imputed.reset_index(), barh_df
 
 def rating_clustering(threshold):
     start = time.time()
