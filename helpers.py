@@ -79,6 +79,9 @@ def apply_clustering():
         scale(aves_props), index=aves_props.index, columns=aves_props.columns
     ).rename(lambda x: str(x))
 
+    print("db:")
+    print(db)
+
     # Apply clustering on scaled df
     km5 = cluster.KMeans(n_clusters=5)
     km5cls = km5.fit(db.reset_index().values)
