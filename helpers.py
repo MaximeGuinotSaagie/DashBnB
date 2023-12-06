@@ -84,6 +84,8 @@ def apply_clustering():
 
     # Apply clustering on scaled df
     numeric_db = db.select_dtypes(include=[np.number])
+    print("numeric_db:")
+    print(numeric_db.dtypes)
     km5 = cluster.KMeans(n_clusters=5)
     km5cls = km5.fit(numeric_db.reset_index().values)
     # print(len(km5cls.labels_))
