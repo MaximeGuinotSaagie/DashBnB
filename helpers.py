@@ -7,6 +7,8 @@ import numpy as np
 import pathlib
 import geopandas as gpd
 import pysal as ps
+import mapclassify
+import libpysal
 import psycopg2
 
 from sklearn import cluster
