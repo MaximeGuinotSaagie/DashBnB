@@ -46,6 +46,44 @@ with open(geo_json_path) as response:
 listing_zipcode = boston_listings["neighbourhood_cleansed"].unique()
 conn.close()
 
+def apply_clustering():
+    """
+     # Apply KMeans clustering to group zipcodes into categories based on type of houses listed(i.e. property type)
+    :return: Dataframe.
+    db: scaled proportions of house types by zipcode, use for plotting Choropleth map layer.
+    barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
+    """
+    variables = ["bedrooms", "bathrooms", "beds"]
+    aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean()
+    review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
+    types = pd.get_dummies(boston_listings["property_type"])
+    prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
+    prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
+    aves_props = aves.join(prop_types_pct)
+
+    # Standardize a dataset along any axis, Center to the mean and component wise scale to unit variance.
+    db = pd.DataFrame(
+        scale(aves_props), index=aves_props.index, columns=aves_props.columns
+    ).rename(lambda x: str(x))
+
+    # Apply clustering on scaled df
+    km5 = cluster.KMeans(n_clusters=5)
+    km5cls = km5.fit(db.values)
+    # print(len(km5cls.labels_))
+    db["cl"] = km5cls.labels_
+    # sort by labels since every time cluster is running, label 0-4 is randomly assigned
+    db["count"] = db.groupby("cl")["cl"].transform("count")
+
+    db.sort_values("count", inplace=True, ascending=True)
+    barh_df = prop_types_pct.assign(cl=km5cls.labels_).groupby("cl").mean()
+    
+    # Join avg review columns for updating review plot
+    db = db.join(review_aves)
+    grouped = db.groupby("cl")[review_columns].mean()
+    barh_df = barh_df.join(grouped)
+    return db.reset_index(), barh_df
+
+
 def rating_clustering(threshold):
     start = time.time()
     # Explore boundaries/ areas where customers are have similar ratings. Different from
