@@ -42,47 +42,9 @@ with open(geo_json_path) as response:
     zc_link = json.load(response)
     # Add id for choropleth layer
     for feature in zc_link["features"]:
-        feature["id"] = feature["properties"]["ZIP5"]
+        feature["id"] = feature["properties"]["neighbourhood"]
 listing_zipcode = boston_listings["neighbourhood_cleansed"].unique()
 conn.close()
-
-def apply_clustering():
-    """
-     # Apply KMeans clustering to group zipcodes into categories based on type of houses listed(i.e. property type)
-    :return: Dataframe.
-    db: scaled proportions of house types by zipcode, use for plotting Choropleth map layer.
-    barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
-    """
-    variables = ["bedrooms", "bathrooms", "beds"]
-    aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean()
-    review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
-    types = pd.get_dummies(boston_listings["property_type"])
-    prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
-    prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
-    aves_props = aves.join(prop_types_pct)
-
-    # Standardize a dataset along any axis, Center to the mean and component wise scale to unit variance.
-    db = pd.DataFrame(
-        scale(aves_props), index=aves_props.index, columns=aves_props.columns
-    ).rename(lambda x: str(x))
-
-    # Apply clustering on scaled df
-    km5 = cluster.KMeans(n_clusters=5)
-    km5cls = km5.fit(db.values)
-    # print(len(km5cls.labels_))
-    db["cl"] = km5cls.labels_
-    # sort by labels since every time cluster is running, label 0-4 is randomly assigned
-    db["count"] = db.groupby("cl")["cl"].transform("count")
-
-    db.sort_values("count", inplace=True, ascending=True)
-    barh_df = prop_types_pct.assign(cl=km5cls.labels_).groupby("cl").mean()
-    
-    # Join avg review columns for updating review plot
-    db = db.join(review_aves)
-    grouped = db.groupby("cl")[review_columns].mean()
-    barh_df = barh_df.join(grouped)
-    return db.reset_index(), barh_df
-
 
 def rating_clustering(threshold):
     start = time.time()
@@ -93,34 +55,48 @@ def rating_clustering(threshold):
     rt_av = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean().dropna()
     # Regionalization requires building of spatial weights
     zc = gpd.read_file(geo_json_path)
-    zrt = zc[["geometry", "neighbourhood_cleansed"]].join(rt_av, on="neighbourhood_cleansed").dropna()
-    zrt.to_file("tmp")
-    w = ps.queen_from_shapefile("tmp/tmp.shp", idVariable="neighbourhood_cleansed")
+    zrt = zc[["geometry", "neighbourhood"]].join(rt_av, on="neighbourhood").dropna()
+
+    w = libpysal.weights.Queen.from_dataframe(zrt)
+    
+   # zrt.to_file("tmp")
+    #w = libpysal.weights.Queen("tmp/tmp.shp", idVariable="neighbourhood")
     # Remove temp tmp/* we created for spatial weights
-    if os.path.isdir(os.path.join(app_path, "tmp")):
-        print("removing tmp folder")
-        shutil.rmtree(os.path.join(app_path, "tmp"))
+   # if os.path.isdir(os.path.join("", "tmp")):
+     #   print("removing tmp folder")
+     #   shutil.rmtree(os.path.join("", "tmp"))
     # Impose that every resulting region has at least 5% of the total number of reviews
     n_review = (
         boston_listings.groupby("neighbourhood_cleansed")
         .sum()["number_of_reviews"]
-        .rename(lambda x: str(int(x)))
-        .reindex(zrt["neighbourhood_cleansed"])
+        .rename(lambda x: str(x))
+        .reindex(zrt["neighbourhood"])
     )
     thr = np.round(int(threshold) / 100 * n_review.sum())
     # Set the seed for reproducibility
     np.random.seed(1234)
-    z = zrt.drop(["geometry", "neighbourhood_cleansed"], axis=1).values
+    #z = zrt.drop(["geometry", "neighbourhood"], axis=1).values
+    z = zrt.drop(["geometry", "neighbourhood"], axis=1).values.flatten()
     # Create max-p algorithm, note that this API is upgraded in pysal>1.11.1
-    maxp = ps.region.Maxp(w, z, thr, n_review.values[:, None], initial=100)
-    maxp.cinference(nperm=99)
+    #maxp = mapclassify.MaxP(connectivity=w, data=z, k=thr, floor=n_review.values[:, None], initial=100)
+    maxp = mapclassify.MaxP(z, k=5, initial=1000, seed1=0, seed2=1)
+    #maxp = mapclassify.MaxP(w, z, thr, num_perm=99, initial=100)
+   # maxp.cinference(nperm=99)
     # p value compared with randomly assigned region
-    p_value = maxp.cpvalue
-    print("p_value:", p_value)
-    lbls = pd.Series(maxp.area2region).reindex(zrt["neighbourhood_cleansed"])
-    regionalization_df = (
-        pd.DataFrame(lbls).reset_index().rename(columns={"neighbourhood_cleansed": "neighbourhood_cleansed", 0: "cl"})
-    )
+    #p_value = maxp.cpvalue
+    #print("p_value:", p_value)
+    # Run the test
+   # maxp_results = maxp.cI(nperm=99)
+    
+    # Access the simulated labels
+   # sim_labels = maxp_results.sim_labels_
+    
+    # Assuming zrt["neighbourhood"] is your original neighborhood variable
+   # lbls = pd.Series(sim_labels).reindex(zrt["neighbourhood"])
+   # lbls = pd.Series(maxp.area2region).reindex(zrt["neighbourhood"])
+   # regionalization_df = (
+   #     pd.DataFrame(lbls).reset_index().rename(columns={"neighbourhood": "neighbourhood", 0: "cl"})
+   # )
     end = time.time()
     # The larger threshold, the longer time it takes for computing
     print(
@@ -130,18 +106,19 @@ def rating_clustering(threshold):
     )
     types = pd.get_dummies(boston_listings["property_type"])
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
-    merged = pd.merge(
-        prop_types.reset_index(), regionalization_df, on="neighbourhood_cleansed", how="inner"
-    )
-    d_merged = merged.drop(["neighbourhood_cleansed", "cl"], axis=1)
-    prop_types_pct = (d_merged * 100.0).div(d_merged.sum(axis=1), axis=0)
-    pct_d = (
-        prop_types_pct.assign(cl=merged["cl"], zipcode=merged["neighbourhood_cleansed"])
-        .groupby("cl")
-        .mean()
-    )
-    zrt = zrt[review_columns].groupby(lbls.values).mean()
-    joined_prop = pct_d.join(zrt)
-    return regionalization_df, p_value, joined_prop
+    # merged = pd.merge(
+    #     prop_types.reset_index(), regionalization_df, on="ZIP5", how="inner"
+    # )
+    # d_merged = merged.drop(["ZIP5", "cl"], axis=1)
+    # prop_types_pct = (d_merged * 100.0).div(d_merged.sum(axis=1), axis=0)
+    # pct_d = (
+    #     prop_types_pct.assign(cl=merged["cl"], zipcode=merged["neighbourhood_cleansed"])
+    #     .groupby("cl")
+    #     .mean()
+    # )
+    # zrt = zrt[review_columns].groupby(lbls.values).mean()
+    # joined_prop = pct_d.join(zrt)
+    # return regionalization_df, p_value, joined_prop
+    return zrt, 1, prop_types
 # #
 # rating = rating_clustering(5)
