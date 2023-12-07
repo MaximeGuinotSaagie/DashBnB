@@ -201,7 +201,7 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
 def make_original_property_graph():
     # Property type without any grouping
     types = pd.get_dummies(boston_listings["property_type"])
-    prop_types = types.join(boston_listings["zipcode"]).groupby("zipcode").sum()
+    prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
     prop_types_pct = (prop_types * 100.0).div(prop_types.sum(axis=1), axis=0)
 
     # Plot horizontal bars
