@@ -31,12 +31,15 @@ db_params = {
 engine = create_engine(
     f"postgresql://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}"
 )
-Session = sessionmaker(bind=engine)
-session = Session()
+
+
 # Use a SQL query to fetch data directly from the database
 schema = "BnB"
 query = f'SELECT * FROM "{schema}".listing_data;'
-boston_listings = pd.read_sql(query, engine)
+with engine.connect() as connection:
+    boston_listings = pd.read_sql(query, connection)
+
+#boston_listings = pd.read_sql(query, engine)
 review_columns = [c for c in boston_listings.columns if "review_" in c]
 
 # Geojson loading
