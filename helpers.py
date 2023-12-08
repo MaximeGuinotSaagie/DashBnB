@@ -57,7 +57,7 @@ def apply_clustering():
     barh_df : scaled proportion of house type grouped by cluster, use for prop type chart and review chart.
     """
     variables = ["bedrooms", "bathrooms", "beds"]
-    aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean()
+    aves = boston_listings.groupby("neighbourhood_cleansed")[variables].mean(numeric_only=True)
     review_aves = boston_listings.groupby("neighbourhood_cleansed")[review_columns].mean()
     types = pd.get_dummies(boston_listings["property_type"])
     prop_types = types.join(boston_listings["neighbourhood_cleansed"]).groupby("neighbourhood_cleansed").sum()
@@ -70,7 +70,7 @@ def apply_clustering():
     ).rename(lambda x: str(x))
 
     # Apply clustering on scaled df
-    km5 = cluster.KMeans(n_clusters=5)
+    km5 = cluster.KMeans(n_clusters=5, n_init=10)
     km5cls = km5.fit(db.values)
     # print(len(km5cls.labels_))
     db["cl"] = km5cls.labels_
@@ -84,7 +84,7 @@ def apply_clustering():
     db = db.join(review_aves)
     grouped = db.groupby("cl")[review_columns].mean()
     barh_df = barh_df.join(grouped)
-    
+
     return db.reset_index(), barh_df
 
 
@@ -99,7 +99,7 @@ def rating_clustering(threshold):
     zc = gpd.read_file(geo_json_path)
     zrt = zc[["geometry", "neighbourhood"]].join(rt_av, on="neighbourhood").dropna()
 
-    w = libpysal.weights.Queen.from_dataframe(zrt)
+    w = libpysal.weights.Queen.from_dataframe(zrt, use_index=True)
     
    # zrt.to_file("tmp")
     #w = libpysal.weights.Queen("tmp/tmp.shp", idVariable="neighbourhood")
