@@ -16,6 +16,7 @@ from helpers import (
     review_columns,
 )
 
+
 app = dash.Dash(__name__)
 app.title = "Real Estate Spatial Clustering"
 server = app.server
@@ -177,11 +178,11 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
                 type="choroplethmapbox",
                 showlegend=True,
                 geojson=zc_link,
-                locations=db[db["cl"] == i]["zipcode"],
-                z=list(1 for _ in range(len(db[db["cl"] == i]["zipcode"]))),
+                locations=db[db["cl"] == i]["neighbourhood"],
+                z=list(1 for _ in range(len(db[db["cl"] == i]["neighbourhood"]))),
                 hoverinfo="location",
                 name="Group {}".format(ind + 1),
-                customdata=list(ind for _ in range(len(db[db["cl"] == i]["zipcode"]))),
+                customdata=list(ind for _ in range(len(db[db["cl"] == i]["neighbourhood"]))),
                 selected=dict(marker=dict(opacity=1)),
                 unselected=dict(marker=dict(opacity=0.2)),
                 selectedpoints="" if ind == sel_ind or sel_ind is None else [],
@@ -486,7 +487,7 @@ def update_indicator(map_select, n_click, cluster_type, ds):
                 if len(str(point["customdata"])) == 1:
                     print("selected region: Group {}".format(point["customdata"] + 1))
                     sel_ind = point["customdata"]
-                    zips = dff[dff["cl"] == sel_ind]["zipcode"]
+                    zips = dff[dff["cl"] == sel_ind]["neighbourhood"]
                     count = 0
                     for zip in zips:
                         count += grouped[str(zip)]
