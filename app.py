@@ -313,7 +313,7 @@ app.layout = html.Div(
     children=[
         dcc.Store(id="cluster-data-store", data=populate_init_data()),
         # Banner
-        header_section(),
+       # header_section(),
         html.Div(
             [
                 html.Div(
