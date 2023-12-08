@@ -9,13 +9,9 @@ import geopandas as gpd
 import pysal as ps
 import mapclassify
 import libpysal
-import psycopg2
-
+from sqlalchemy import create_engine
 from sklearn import cluster
 from sklearn.preprocessing import scale
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn import preprocessing
 
 # Data reading & Processing
 app_path = pathlib.Path(__file__).parent.resolve()
@@ -31,12 +27,15 @@ db_params = {
     "password": os.environ["POSTGRESQL_PASSWORD"],
 }
 
-# Establish a connection to the PostgreSQL database
-conn = psycopg2.connect(**db_params)
+# Create a SQLAlchemy engine
+engine = create_engine(
+    f"postgresql://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}"
+)
+
 # Use a SQL query to fetch data directly from the database
 schema = "BnB"
 query = f'SELECT * FROM "{schema}".listing_data;'
-boston_listings = pd.read_sql(query, conn)
+boston_listings = pd.read_sql(query, engine)
 review_columns = [c for c in boston_listings.columns if "review_" in c]
 
 # Geojson loading
@@ -45,8 +44,10 @@ with open(geo_json_path) as response:
     # Add id for choropleth layer
     for feature in zc_link["features"]:
         feature["id"] = feature["properties"]["neighbourhood"]
+
 listing_zipcode = boston_listings["neighbourhood_cleansed"].unique()
-conn.close()
+# Close the SQLAlchemy engine
+engine.dispose()
 
 def apply_clustering():
     """
@@ -83,6 +84,7 @@ def apply_clustering():
     db = db.join(review_aves)
     grouped = db.groupby("cl")[review_columns].mean()
     barh_df = barh_df.join(grouped)
+    
     return db.reset_index(), barh_df
 
 
