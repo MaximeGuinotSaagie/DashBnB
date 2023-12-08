@@ -25,7 +25,7 @@ app.config.suppress_callback_exceptions = True
 # CONSTANTS
 grouped = boston_listings.groupby("neighbourhood_cleansed").size()
 
-mapbox_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A"
+mapbox_token = "pk.eyJ1IjoibWF4aW1lLWd1aW5vdCIsImEiOiJjbHB3bjh4ZGUwaHhnMm9udWY1cGdyaHRxIn0.nvIVwxGyLYp8RNekRUOCSw"
 
 geo_colors = [
     "#8dd3c7",
