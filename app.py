@@ -60,7 +60,7 @@ intro_text = """
 **About this app**
 
 This app applies spatial clustering and regionalization analysis to discover the [dataset of AirBnb listings in the
-city of Austin](http://insideairbnb.com/get-the-data.html). Models are created using [pysal](https://pysal.readthedocs.io/en/latest/)
+city of Bostonn](http://insideairbnb.com/get-the-data.html). Models are created using [pysal](https://pysal.readthedocs.io/en/latest/)
 and scikit-learn.
 
 Select the type of model from radioitem, click on the button to run clustering and visualize output regions geographically on the map, computing may take seconds to finish. Click
@@ -171,6 +171,8 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
     elif c_type == "rating-cluster":
         db, p_val = pd.read_json(stored_data["rt"]["data"]), stored_data["rt"]["p_val"]
 
+    print("db types in make_map_with_clustering")
+    print(db.dtypes)
     for ind, i in enumerate(db["cl"].unique()):
         # Choro cluster by zipcode, split into different colored choro layer after clustering or regionalization.
         figure["data"].append(
@@ -317,7 +319,7 @@ app.layout = html.Div(
                 html.Div(
                     children=[
                         html.Div(id="intro-text", children=dcc.Markdown(intro_text)),
-                        html.P("Austin Airbnb listings"),
+                        html.P("Boston Airbnb listings"),
                         html.Hr(),
                         dcc.Graph(id="map", config={"responsive": True}),
                     ],
@@ -475,6 +477,8 @@ def update_indicator(map_select, n_click, cluster_type, ds):
     if ctx.triggered and "clickData" in ctx.triggered[0]["prop_id"]:
         ht = pd.read_json(ds["ht"]["data"])
         rt = pd.read_json(ds["rt"]["data"])
+        print("map_select types in update_indicator")
+        print(map_select.dtypes)
         if cluster_type == "ht-cluster":
             dff = ht
         elif cluster_type == "rating-cluster":
