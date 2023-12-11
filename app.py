@@ -535,6 +535,9 @@ def update_review_chart(ds, clustering_type):
         ),
     }
 
+    print("empty_fig:")
+    print(empty_fig)
+
     if clustering_type == "rating-cluster":
         pct_d = pd.read_json(ds["rt"]["pct_d"])[review_columns]
         pct_d[review_columns[1:]] = pct_d[review_columns[1:]] * 20
