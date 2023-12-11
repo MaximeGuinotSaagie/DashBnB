@@ -33,6 +33,7 @@ engine = create_engine(
 )
 
 
+
 # Use a SQL query to fetch data directly from the database
 schema = "BnB"
 query = text(f'SELECT * FROM "{schema}".listing_data;')

@@ -535,28 +535,35 @@ def update_review_chart(ds, clustering_type):
         ),
     }
 
-    print("empty_fig:")
-    print(empty_fig)
 
     if clustering_type == "rating-cluster":
         pct_d = pd.read_json(ds["rt"]["pct_d"])[review_columns]
         pct_d[review_columns[1:]] = pct_d[review_columns[1:]] * 20
-        print("pct_d:")
+
+        # Print the dataframe
+        print("Dataframe in update_review_chart:")
         print(pct_d)
+
         return make_review_chart(pct_d)
     elif clustering_type == "ht-cluster":
         ht = pd.read_json(ds["ht"]["pct"])[review_columns]
         ht[review_columns[1:]] = ht[review_columns[1:]] * 20
-        print("ht:")
+
+        # Print the dataframe
+        print("Dataframe in update_review_chart:")
         print(ht)
+
         return make_review_chart(ht)
     elif clustering_type == "no-cluster":
         # Avg review scores for all data
         dff = boston_listings[review_columns].mean(axis=0, skipna=True)
         dff_t = pd.DataFrame(dff).transpose()
         dff_t[review_columns[1:]] = dff_t[review_columns[1:]] * 20
-        print("dff_t:")
+
+        # Print the dataframe
+        print("Dataframe in update_review_chart:")
         print(dff_t)
+
         return make_review_chart(dff_t, original=True)
     return empty_fig
 
