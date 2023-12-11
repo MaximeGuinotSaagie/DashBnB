@@ -86,7 +86,6 @@ def header_section():
         className="header__title",
     )
 
-print("allo")
 def make_base_map():
     # Scattermapbox with geojson layer, plot all listings on mapbox
     customdata = list(
@@ -535,6 +534,7 @@ def update_review_chart(ds, clustering_type):
         ),
     }
 
+    print(ds)
 
     if clustering_type == "rating-cluster":
         pct_d = pd.read_json(ds["rt"]["pct_d"])[review_columns]
