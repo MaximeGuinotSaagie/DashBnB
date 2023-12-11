@@ -397,7 +397,7 @@ app.layout = html.Div(
     ],
     className="container twelve columns",
 )
-
+print(data)
 
 # =====Callbacks=====
 @app.callback(
@@ -533,8 +533,6 @@ def update_review_chart(ds, clustering_type):
             hovermode="closest",
         ),
     }
-
-    print(ds)
 
     if clustering_type == "rating-cluster":
         pct_d = pd.read_json(ds["rt"]["pct_d"])[review_columns]
