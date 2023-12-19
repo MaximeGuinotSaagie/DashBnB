@@ -1,3 +1,5 @@
+from io import StringIO
+
 import dash
 from dash import dcc
 from dash import html
@@ -166,9 +168,9 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
 
     db = pd.DataFrame()
     if c_type == "ht-cluster":
-        db = pd.read_json(stored_data["ht"]["data"])
+        db = pd.read_json(StringIO(stored_data["ht"]["data"]))
     elif c_type == "rating-cluster":
-        db, p_val = pd.read_json(stored_data["rt"]["data"]), stored_data["rt"]["p_val"]
+        db, p_val = pd.read_json(StringIO(stored_data["rt"]["data"])), stored_data["rt"]["p_val"]
 
     print("db types in make_map_with_clustering")
     print(db.dtypes)
@@ -179,11 +181,11 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
                 type="choroplethmapbox",
                 showlegend=True,
                 geojson=zc_link,
-                locations=db[db["cl"] == i]["neighbourhood"],
-                z=list(1 for _ in range(len(db[db["cl"] == i]["neighbourhood"]))),
+                locations=db[db["cl"] == i]["neighbourhood_cleansed"],
+                z=list(1 for _ in range(len(db[db["cl"] == i]["neighbourhood_cleansed"]))),
                 hoverinfo="location",
                 name="Group {}".format(ind + 1),
-                customdata=list(ind for _ in range(len(db[db["cl"] == i]["neighbourhood"]))),
+                customdata=list(ind for _ in range(len(db[db["cl"] == i]["neighbourhood_cleansed"]))),
                 selected=dict(marker=dict(opacity=1)),
                 unselected=dict(marker=dict(opacity=0.2)),
                 selectedpoints="" if ind == sel_ind or sel_ind is None else [],
@@ -337,10 +339,6 @@ app.layout = html.Div(
                                     "label": "Cluster based on house type",
                                     "value": "ht-cluster",
                                 },
-                                {
-                                    "label": "Regionalization based on Ratings",
-                                    "value": "rating-cluster",
-                                },
                             ],
                             value="no-cluster",
                         ),
@@ -474,10 +472,11 @@ def update_ds(n_clicks, clustering_type, cur_ds, thr):
 def update_indicator(map_select, n_click, cluster_type, ds):
     ctx = dash.callback_context
     if ctx.triggered and "clickData" in ctx.triggered[0]["prop_id"]:
-        ht = pd.read_json(ds["ht"]["data"])
-        rt = pd.read_json(ds["rt"]["data"])
+        ht = pd.read_json(StringIO(ds["ht"]["data"]))
+        rt = pd.read_json(StringIO(ds["rt"]["data"]))
         print("map_select types in update_indicator")
         print(map_select.dtypes)
+        dff = None
         if cluster_type == "ht-cluster":
             dff = ht
         elif cluster_type == "rating-cluster":
@@ -486,6 +485,8 @@ def update_indicator(map_select, n_click, cluster_type, ds):
             return str(len(boston_listings)), {"color": "#550100"}
 
         else:
+            print("dff types in update_indicator")
+            print(dff.dtypes)
             for point in map_select["points"]:
                 if len(str(point["customdata"])) == 1:
                     print("selected region: Group {}".format(point["customdata"] + 1))
@@ -508,10 +509,10 @@ def update_geodemo_chart(ds, clustering_type):
     # Update upon clustering updates ds
     if ds:
         if clustering_type == "ht-cluster":
-            pct = pd.read_json(ds["ht"]["pct"]).drop(review_columns, axis=1)
+            pct = pd.read_json(StringIO(ds["ht"]["pct"])).drop(review_columns, axis=1)
             return make_property_graph(pct)
         if clustering_type == "rating-cluster":
-            pct_d = pd.read_json(ds["rt"]["pct_d"]).drop(review_columns, axis=1)
+            pct_d = pd.read_json(StringIO(ds["rt"]["pct_d"])).drop(review_columns, axis=1)
             return make_property_graph(pct_d)
         elif clustering_type == "no-cluster":
             return make_original_property_graph()
@@ -535,11 +536,11 @@ def update_review_chart(ds, clustering_type):
     }
 
     if clustering_type == "rating-cluster":
-        pct_d = pd.read_json(ds["rt"]["pct_d"])[review_columns]
+        pct_d = pd.read_json(StringIO(ds["rt"]["pct_d"]))[review_columns]
         pct_d[review_columns[0:]] = pct_d[review_columns[0:]] * 20
         return make_review_chart(pct_d)
     elif clustering_type == "ht-cluster":
-        ht = pd.read_json(ds["ht"]["pct"])[review_columns]
+        ht = pd.read_json(StringIO(ds["ht"]["pct"]))[review_columns]
         ht[review_columns[0:]] = ht[review_columns[0:]] * 20
         return make_review_chart(ht)
     elif clustering_type == "no-cluster":

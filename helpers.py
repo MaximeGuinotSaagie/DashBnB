@@ -7,7 +7,7 @@ import numpy as np
 import pathlib
 import geopandas as gpd
 import pysal as ps
-import mapclassify
+from pysal.viz.mapclassify import MaxP
 import libpysal
 from sqlalchemy import create_engine, text
 from sklearn import cluster
@@ -114,8 +114,8 @@ def rating_clustering(threshold):
      #   shutil.rmtree(os.path.join("", "tmp"))
     # Impose that every resulting region has at least 5% of the total number of reviews
     n_review = (
-        boston_listings.groupby("neighbourhood_cleansed")
-        .sum()["number_of_reviews"]
+        boston_listings.groupby("neighbourhood_cleansed")["number_of_reviews"]
+        .sum()
         .rename(lambda x: str(x))
         .reindex(zrt["neighbourhood"])
     )
@@ -126,7 +126,7 @@ def rating_clustering(threshold):
     z = zrt.drop(["geometry", "neighbourhood"], axis=1).values.flatten()
     # Create max-p algorithm, note that this API is upgraded in pysal>1.11.1
     #maxp = mapclassify.MaxP(connectivity=w, data=z, k=thr, floor=n_review.values[:, None], initial=100)
-    maxp = mapclassify.MaxP(z, k=5, initial=1000, seed1=0, seed2=1)
+    maxp = MaxP(z, k=5, initial=1000, seed1=0, seed2=1)
     #maxp = mapclassify.MaxP(w, z, thr, num_perm=99, initial=100)
    # maxp.cinference(nperm=99)
     # p value compared with randomly assigned region

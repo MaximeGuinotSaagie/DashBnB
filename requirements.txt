@@ -12,3 +12,4 @@ sqlalchemy
 #mkl
 pathlib
 #cmake
+psycopg2
