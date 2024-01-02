@@ -173,7 +173,7 @@ def make_map_with_clustering(sel_ind, c_type, stored_data):
         db, p_val = pd.read_json(StringIO(stored_data["rt"]["data"])), stored_data["rt"]["p_val"]
 
     print("db types in make_map_with_clustering")
-    print(db.dtypes)
+
     for ind, i in enumerate(db["cl"].unique()):
         # Choro cluster by zipcode, split into different colored choro layer after clustering or regionalization.
         figure["data"].append(
@@ -475,7 +475,6 @@ def update_indicator(map_select, n_click, cluster_type, ds):
         ht = pd.read_json(StringIO(ds["ht"]["data"]))
         rt = pd.read_json(StringIO(ds["rt"]["data"]))
         print("map_select types in update_indicator")
-        print(map_select.dtypes)
         dff = None
         if cluster_type == "ht-cluster":
             dff = ht
@@ -486,12 +485,11 @@ def update_indicator(map_select, n_click, cluster_type, ds):
 
         else:
             print("dff types in update_indicator")
-            print(dff.dtypes)
             for point in map_select["points"]:
                 if len(str(point["customdata"])) == 1:
                     print("selected region: Group {}".format(point["customdata"] + 1))
                     sel_ind = point["customdata"]
-                    zips = dff[dff["cl"] == sel_ind]["neighbourhood"]
+                    zips = dff[dff["cl"] == sel_ind]["neighbourhood_cleansed"]
                     count = 0
                     for zip in zips:
                         count += grouped[str(zip)]
