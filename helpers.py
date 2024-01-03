@@ -39,6 +39,13 @@ schema = "BnB"
 query = text(f'SELECT * FROM "{schema}".listing_data;')
 with engine.connect() as connection:
     boston_listings = pd.read_sql(query, connection)
+    boston_listings.loc[boston_listings['property_type'].str.startswith("Private"), 'property_type'] = 'Private Room'
+    boston_listings.loc[boston_listings['property_type'].str.startswith("Casa"), 'property_type'] = 'Private Room'
+    boston_listings.loc[boston_listings['property_type'].str.startswith("Shared"), 'property_type'] = 'Shared Room'
+    boston_listings.loc[boston_listings['property_type'].str.startswith("Entire"), 'property_type'] = 'Entire location'
+    boston_listings.loc[boston_listings['property_type'].str.startswith("Room"), 'property_type'] = 'Hotel Room'
+    boston_listings.loc[boston_listings['property_type'].str.contains("Boat"), 'property_type'] = 'Boat'
+
 
 #boston_listings = pd.read_sql(query, engine)
 review_columns = [c for c in boston_listings.columns if "review_" in c]
