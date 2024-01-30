@@ -136,7 +136,7 @@ def make_base_map():
         z=[1] * len(geojson_data["features"]),  # Modify this based on your GeoJSON data
         hoverinfo="location",
         name="Blue Bike Stations",  # Name of the GeoJSON layer
-        marker=dict(opacity=0.8, line=dict(width=1)),
+        marker=dict(symbol="bicycle", opacity=0.8, line=dict(width=1)),
         colorscale=[[0, geo_colors[0]], [1, geo_colors[0]]],
         showscale=False,
     )
