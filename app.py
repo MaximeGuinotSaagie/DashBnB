@@ -8,6 +8,10 @@ from dash.exceptions import PreventUpdate
 import plotly.graph_objects as go
 import plotly.express as px
 
+from io import BytesIO
+import requests
+import json
+
 import pandas as pd
 
 from helpers import (
@@ -23,6 +27,14 @@ app = dash.Dash(__name__)
 app.title = "Real Estate Spatial Clustering"
 server = app.server
 app.config.suppress_callback_exceptions = True
+
+
+# URL of the GeoJSON file
+geojson_url = "https://bostonopendata-boston.opendata.arcgis.com/datasets/boston::blue-bike-stations.geojson?where=1=1&outSR=%7B%22latestWkid%22%3A3857%2C%22wkid%22%3A102100%7D"
+
+# Load GeoJSON data from the URL
+response = requests.get(geojson_url)
+geojson_data = response.json()
 
 # CONSTANTS
 grouped = boston_listings.groupby("neighbourhood_cleansed").size()
@@ -116,6 +128,19 @@ def make_base_map():
         "<b>Yearly Availability: </b>%{customdata[5]} days/year (%{customdata[6]} %)",
     )
 
+    # Add GeoJSON layer
+    geojson_layer = dict(
+        type="choroplethmapbox",
+        geojson=geojson_data,
+        locations=[feature["properties"]["Name"] for feature in geojson_data["features"]],  # Modify this based on your GeoJSON data
+        z=[1] * len(geojson_data["features"]),  # Modify this based on your GeoJSON data
+        hoverinfo="location",
+        name="Blue Bike Stations",  # Name of the GeoJSON layer
+        marker=dict(opacity=0.8, line=dict(width=1)),
+        colorscale=[[0, geo_colors[0]], [1, geo_colors[0]]],
+        showscale=False,
+    )
+
     layout = dict(
         mapbox=dict(
             style="streets",
@@ -145,7 +170,7 @@ def make_base_map():
         hovermode="closest",
     )
 
-    figure = {"data": [mapbox_figure], "layout": layout}
+    figure = {"data": [mapbox_figure, geojson_layer], "layout": layout}
     return figure
 
 
